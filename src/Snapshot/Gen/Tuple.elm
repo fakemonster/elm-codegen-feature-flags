@@ -1,4 +1,4 @@
-module Gen.Tuple exposing
+module Snapshot.Gen.Tuple exposing
     ( moduleName_, pair, first, second, mapFirst, mapSecond
     , mapBoth, call_, values_
     )

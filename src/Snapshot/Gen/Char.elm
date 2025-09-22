@@ -1,4 +1,4 @@
-module Gen.Char exposing
+module Snapshot.Gen.Char exposing
     ( moduleName_, isUpper, isLower, isAlpha, isAlphaNum, isDigit
     , isOctDigit, isHexDigit, toUpper, toLower, toLocaleUpper, toLocaleLower, toCode
     , fromCode, annotation_, call_, values_

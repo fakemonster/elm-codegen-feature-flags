@@ -23,17 +23,17 @@ import Elm.Arg as Arg
 import Elm.Case as Case
 import Elm.Let as Let
 import Elm.Op as Op
-import Gen.Basics
-import Gen.Dict
-import Gen.Json.Decode as GJD
-import Gen.Json.Decode.Pipeline as GPipeline
-import Gen.Json.Encode as GJE
-import Gen.List
-import Gen.Maybe
-import Gen.Tuple
-import Gen.Url.Builder
-import Gen.Url.Parser
-import Gen.Url.Parser.Query as GUPQ
+import Snapshot.Gen.Basics as GenBasics
+import Snapshot.Gen.Dict as GenDict
+import Snapshot.Gen.Json.Decode as GJD
+import Snapshot.Gen.Json.Decode.Pipeline as GPipeline
+import Snapshot.Gen.Json.Encode as GJE
+import Snapshot.Gen.List as GenList
+import Snapshot.Gen.Maybe as GenMaybe
+import Snapshot.Gen.Tuple as GenTuple
+import Snapshot.Gen.Url.Builder as GUB
+import Snapshot.Gen.Url.Parser as GUP
+import Snapshot.Gen.Url.Parser.Query as GUPQ
 
 
 toSetterName : String -> String
@@ -89,11 +89,11 @@ maybeString name =
         { name = name
         , default = Elm.nothing
         , decoder = GJD.maybe GJD.string
-        , encode = Gen.Maybe.map GJE.call_.string
+        , encode = GenMaybe.map GJE.call_.string
         , parser = GUPQ.string
         , toQuery =
             \flagName val ->
-                Gen.Maybe.map (Gen.Url.Builder.call_.string (Elm.string flagName)) val
+                GenMaybe.map (GUB.call_.string (Elm.string flagName)) val
         , type_ = type_
         , prioritize =
             \primary secondary ->
@@ -139,14 +139,14 @@ bool name =
         , encode = whenTrue (GJE.bool True)
         , parser =
             \param ->
-                GUPQ.map (Gen.Maybe.withDefault (Elm.bool False)) <|
+                GUPQ.map (GenMaybe.withDefault (Elm.bool False)) <|
                     GUPQ.enum param
-                        (Gen.Dict.fromList
+                        (GenDict.fromList
                             [ Elm.tuple (Elm.string "true") (Elm.bool True)
                             ]
                         )
         , toQuery =
-            \flagName -> whenTrue (Gen.Url.Builder.string flagName "true")
+            \flagName -> whenTrue (GUB.string flagName "true")
         , type_ = type_
         , prioritize = Op.or
         }
@@ -366,11 +366,11 @@ generate fileName (Config config) =
                             (Arg.var "featureFlags")
                             (\featureFlags ->
                                 GJE.call_.object
-                                    (Gen.List.filterMap Gen.Basics.identity
+                                    (GenList.filterMap GenBasics.identity
                                         (List.map
                                             (\flag ->
-                                                Gen.Maybe.map
-                                                    (Gen.Tuple.pair (Elm.string flag.name))
+                                                GenMaybe.map
+                                                    (GenTuple.pair (Elm.string flag.name))
                                                     (flag.encode (featureFlags |> Elm.get flag.name))
                                             )
                                             flags
@@ -397,9 +397,9 @@ generate fileName (Config config) =
                                         Elm.apply (Elm.val "FeatureFlags")
                                             (List.map
                                                 (\flag ->
-                                                    Gen.Maybe.withDefault flag.default
-                                                        (Gen.Url.Parser.parse
-                                                            (Gen.Url.Parser.query
+                                                    GenMaybe.withDefault flag.default
+                                                        (GUP.parse
+                                                            (GUP.query
                                                                 (flag.parser (config.queryKeyFormatter flag.name))
                                                             )
                                                             droppedPath
@@ -425,7 +425,7 @@ generate fileName (Config config) =
                         Elm.fn
                             (Arg.var "featureFlags")
                             (\featureFlags ->
-                                Gen.List.filterMap Gen.Basics.identity
+                                GenList.filterMap GenBasics.identity
                                     (List.map
                                         (\flag ->
                                             flag.toQuery
@@ -494,7 +494,7 @@ Invoke a callback for each flag that has a non-default value.
                 }
               <|
                 \applied featureFlags ->
-                    Gen.List.filterMap Gen.Basics.identity
+                    GenList.filterMap GenBasics.identity
                         (List.map
                             (\flag ->
                                 Elm.ifThen

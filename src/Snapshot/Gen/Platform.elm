@@ -1,4 +1,4 @@
-module Gen.Platform exposing
+module Snapshot.Gen.Platform exposing
     ( moduleName_, worker, sendToApp, sendToSelf, annotation_, call_
     , values_
     )

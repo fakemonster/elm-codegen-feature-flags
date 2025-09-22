@@ -1,4 +1,4 @@
-module Gen.Url exposing
+module Snapshot.Gen.Url exposing
     ( moduleName_, toString, fromString, percentEncode, percentDecode, annotation_
     , make_, caseOf_, call_, values_
     )

@@ -1,4 +1,4 @@
-module Gen.Url.Builder exposing
+module Snapshot.Gen.Url.Builder exposing
     ( moduleName_, absolute, relative, crossOrigin, custom, string
     , int, toQuery, annotation_, make_, caseOf_, call_, values_
     )

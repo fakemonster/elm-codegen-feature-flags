@@ -1,4 +1,4 @@
-module Gen.Task exposing
+module Snapshot.Gen.Task exposing
     ( moduleName_, perform, attempt, andThen, succeed, fail
     , sequence, map, map2, map3, map4, map5, onError
     , mapError, annotation_, call_, values_

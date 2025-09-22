@@ -1,4 +1,4 @@
-module Gen.Platform.Cmd exposing
+module Snapshot.Gen.Platform.Cmd exposing
     ( moduleName_, none, batch, map, annotation_, call_
     , values_
     )

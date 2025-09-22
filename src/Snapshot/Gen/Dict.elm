@@ -1,4 +1,4 @@
-module Gen.Dict exposing
+module Snapshot.Gen.Dict exposing
     ( moduleName_, empty, singleton, insert, update, remove
     , isEmpty, member, get, size, keys, values, toList
     , fromList, map, foldl, foldr, filter, partition, union

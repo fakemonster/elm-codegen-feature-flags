@@ -1,4 +1,4 @@
-module Gen.Result exposing
+module Snapshot.Gen.Result exposing
     ( moduleName_, map, map2, map3, map4, map5
     , andThen, withDefault, toMaybe, fromMaybe, mapError, annotation_, make_
     , caseOf_, call_, values_

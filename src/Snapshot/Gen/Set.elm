@@ -1,4 +1,4 @@
-module Gen.Set exposing
+module Snapshot.Gen.Set exposing
     ( moduleName_, empty, singleton, insert, remove, isEmpty
     , member, size, union, intersect, diff, toList, fromList
     , map, foldl, foldr, filter, partition, annotation_, call_

@@ -1,4 +1,4 @@
-module Gen.Url.Parser.Query exposing
+module Snapshot.Gen.Url.Parser.Query exposing
     ( moduleName_, string, int, enum, custom, map
     , map2, map3, map4, map5, map6, map7, map8
     , annotation_, call_, values_

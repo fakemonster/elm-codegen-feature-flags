@@ -1,4 +1,4 @@
-module Gen.Json.Encode exposing
+module Snapshot.Gen.Json.Encode exposing
     ( moduleName_, encode, string, int, float, bool
     , null, list, array, set, object, dict, annotation_
     , call_, values_

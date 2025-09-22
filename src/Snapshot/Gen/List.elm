@@ -1,4 +1,4 @@
-module Gen.List exposing
+module Snapshot.Gen.List exposing
     ( moduleName_, singleton, repeat, range, map, indexedMap
     , foldl, foldr, filter, filterMap, length, reverse, member
     , all, any, maximum, minimum, sum, product, append

@@ -1,4 +1,4 @@
-module Gen.Json.Decode exposing
+module Snapshot.Gen.Json.Decode exposing
     ( moduleName_, string, bool, int, float, nullable
     , list, array, dict, keyValuePairs, oneOrMore, field, at
     , index, maybe, oneOf, decodeString, decodeValue, errorToString, map

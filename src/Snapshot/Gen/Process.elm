@@ -1,4 +1,4 @@
-module Gen.Process exposing
+module Snapshot.Gen.Process exposing
     ( moduleName_, spawn, sleep, kill, annotation_, call_
     , values_
     )

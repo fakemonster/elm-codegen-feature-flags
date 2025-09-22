@@ -1,4 +1,4 @@
-module Gen.Basics exposing
+module Snapshot.Gen.Basics exposing
     ( moduleName_, toFloat, round, floor, ceiling, truncate
     , max, min, compare, not, xor, modBy, remainderBy
     , negate, abs, clamp, sqrt, logBase, e, degrees

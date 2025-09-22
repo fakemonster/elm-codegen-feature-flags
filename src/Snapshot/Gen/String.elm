@@ -1,4 +1,4 @@
-module Gen.String exposing
+module Snapshot.Gen.String exposing
     ( moduleName_, isEmpty, length, reverse, repeat, replace
     , append, concat, split, join, words, lines, slice
     , left, right, dropLeft, dropRight, contains, startsWith, endsWith

@@ -1,4 +1,4 @@
-module Gen.Array exposing
+module Snapshot.Gen.Array exposing
     ( moduleName_, empty, initialize, repeat, fromList, isEmpty
     , length, get, set, push, append, slice, toList
     , toIndexedList, map, indexedMap, foldl, foldr, filter, annotation_

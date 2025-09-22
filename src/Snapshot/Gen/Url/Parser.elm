@@ -1,4 +1,4 @@
-module Gen.Url.Parser exposing
+module Snapshot.Gen.Url.Parser exposing
     ( moduleName_, string, int, s, map, oneOf
     , top, custom, query, fragment, parse, annotation_, call_
     , values_

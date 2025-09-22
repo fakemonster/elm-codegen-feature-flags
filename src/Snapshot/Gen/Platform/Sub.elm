@@ -1,4 +1,4 @@
-module Gen.Platform.Sub exposing
+module Snapshot.Gen.Platform.Sub exposing
     ( moduleName_, none, batch, map, annotation_, call_
     , values_
     )

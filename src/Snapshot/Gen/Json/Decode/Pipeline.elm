@@ -1,4 +1,4 @@
-module Gen.Json.Decode.Pipeline exposing
+module Snapshot.Gen.Json.Decode.Pipeline exposing
     ( moduleName_, required, requiredAt, optional, optionalAt, hardcoded
     , custom, resolve, call_, values_
     )

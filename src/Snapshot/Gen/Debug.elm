@@ -1,4 +1,4 @@
-module Gen.Debug exposing
+module Snapshot.Gen.Debug exposing
     ( moduleName_, toString, log, todo, call_, values_
     )
 

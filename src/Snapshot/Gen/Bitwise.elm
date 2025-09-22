@@ -1,4 +1,4 @@
-module Gen.Bitwise exposing
+module Snapshot.Gen.Bitwise exposing
     ( moduleName_, and, or, xor, complement, shiftLeftBy
     , shiftRightBy, shiftRightZfBy, call_, values_
     )
