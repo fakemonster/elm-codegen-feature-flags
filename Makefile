@@ -6,10 +6,13 @@ preview-docs:
 	npx elm-doc-preview --port "$(PORT)"
 
 generate-example:
-	npx elm-codegen run --output examples/generated
+	cd examples && \
+		npx elm-codegen run --output generated
 
 preview-generated-docs: generate-example
-	cd examples && npx elm-doc-preview --port "$(PORT)"
+	cd examples && \
+		npx elm-doc-preview --port "$(PORT)"
 
 examples-reactor: generate-example
-	cd examples && elm reactor --port "$(PORT)"
+	cd examples && \
+		elm reactor --port "$(PORT)"
