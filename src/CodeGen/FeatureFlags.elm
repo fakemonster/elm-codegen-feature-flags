@@ -1,5 +1,5 @@
 module CodeGen.FeatureFlags exposing
-    ( bool, maybeString
+    ( bool, maybeString, string
     , fromFlags, withJsonConverters, withUrlConverters, withQueryKeyFormatter, generate
     )
 
@@ -8,7 +8,7 @@ module CodeGen.FeatureFlags exposing
 
 # Flags
 
-@docs bool, maybeString
+@docs bool, maybeString, string
 
 
 # Builder methods
@@ -38,11 +38,11 @@ import Snapshot.Gen.Url.Parser.Query as GUPQ
 
 
 toSetterName : String -> String
-toSetterName string =
+toSetterName string_ =
     "set"
-        ++ (String.uncons string
+        ++ (String.uncons string_
                 |> Maybe.map (Tuple.mapFirst Char.toUpper >> (\( c, s ) -> String.cons c s))
-                |> Maybe.withDefault string
+                |> Maybe.withDefault string_
            )
 
 
@@ -105,6 +105,51 @@ maybeString name =
                         , always primary
                         )
                     }
+        }
+
+
+{-| Create a feature flag for strings, with your own default value. The first string parameter here
+will be your flag name in the generated code, so always provide camelCase.
+
+    fromFlags [ string "welcomeMessage" "Welcome to my site!" ]
+        |> generate "FeatureFlags"
+    -- produces a feature flag record definition of
+    -- { welcomeMessage : String }
+
+-}
+string : String -> String -> Flag
+string name default_ =
+    let
+        type_ =
+            Type.string
+
+        default =
+            Elm.string default_
+    in
+    F
+        { name = name
+        , default = default
+        , decoder = GJD.string
+        , encode =
+            \val ->
+                Elm.ifThen (Op.notEqual val default)
+                    (Elm.just (GJE.call_.string val))
+                    Elm.nothing
+        , parser =
+            \param ->
+                GUPQ.map (GenMaybe.withDefault default) <|
+                    GUPQ.string param
+        , toQuery =
+            \flagName val ->
+                Elm.ifThen (Op.notEqual val default)
+                    (Elm.just (GUB.call_.string (Elm.string flagName) val))
+                    Elm.nothing
+        , type_ = type_
+        , prioritize =
+            \primary secondary ->
+                Elm.ifThen (Op.notEqual primary secondary)
+                    primary
+                    secondary
         }
 
 

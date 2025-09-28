@@ -14,6 +14,7 @@ main =
             , FF.bool "largeLoginButton"
             , FF.bool "largeSignupButton"
             , FF.bool "useExperimentalAnimationLibrary"
+            , FF.string "welcomeMessage" "Hello :)"
             ]
             |> FF.withJsonConverters
             |> FF.withUrlConverters

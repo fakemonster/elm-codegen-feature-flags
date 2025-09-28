@@ -22,6 +22,7 @@ type Msg
     | SetLargeSignupButton Bool
     | SetCustomApiDomain (Maybe String)
     | SetExperimentalAnimationLibrary Bool
+    | SetWelcomeMessage String
 
 
 init : JD.Value -> Url -> Key -> ( Model, Cmd Msg )
@@ -58,13 +59,18 @@ update msg model =
             , Cmd.none
             )
 
-        SetCustomApiDomain bool ->
-            ( { model | flags = FeatureFlags.setCustomApiDomain bool model.flags }
+        SetCustomApiDomain s ->
+            ( { model | flags = FeatureFlags.setCustomApiDomain s model.flags }
             , Cmd.none
             )
 
         SetExperimentalAnimationLibrary bool ->
             ( { model | flags = FeatureFlags.setUseExperimentalAnimationLibrary bool model.flags }
+            , Cmd.none
+            )
+
+        SetWelcomeMessage string ->
+            ( { model | flags = FeatureFlags.setWelcomeMessage string model.flags }
             , Cmd.none
             )
 
@@ -84,6 +90,7 @@ handlers =
     , largeSignupButton = SetLargeSignupButton
     , customApiDomain = SetCustomApiDomain
     , useExperimentalAnimationLibrary = SetExperimentalAnimationLibrary
+    , welcomeMessage = SetWelcomeMessage
     }
 
 
@@ -130,6 +137,17 @@ viewMaybeStringFlag name toMsg status =
         ]
 
 
+viewStringFlag : { name : String, value : String, default : String } -> (String -> Msg) -> Html Msg
+viewStringFlag { name, value, default } toMsg =
+    H.div []
+        [ H.text (name ++ ": ")
+        , H.div []
+            [ H.input [ HA.type_ "text", HE.onInput toMsg, HA.value value ] []
+            , H.button [ HE.onClick (toMsg default) ] [ H.text "Reset" ]
+            ]
+        ]
+
+
 flagViewers : Handlers -> Viewers
 flagViewers toMsg =
     { eagerLoadInvites = viewBoolFlag "Eager load invites" toMsg.eagerLoadInvites
@@ -138,6 +156,11 @@ flagViewers toMsg =
     , useExperimentalAnimationLibrary =
         viewBoolFlag "Experimental animation library" toMsg.useExperimentalAnimationLibrary
     , customApiDomain = viewMaybeStringFlag "Custom API Domain" toMsg.customApiDomain
+    , welcomeMessage =
+        \value ->
+            viewStringFlag
+                { name = "Welcome message", value = value, default = FeatureFlags.default.welcomeMessage }
+                toMsg.welcomeMessage
     }
 
 
