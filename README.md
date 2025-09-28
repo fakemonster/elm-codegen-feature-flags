@@ -104,11 +104,12 @@ main : Program {} () ()
 main =
     Generate.run
         [ FF.fromFlags
-            [ FF.maybeString "customApiDomain"
-            , FF.bool "eagerLoadInvites"
-            , FF.bool "largeLoginButton"
-            , FF.bool "largeSignupButton"
-            , FF.bool "useExperimentalAnimationLibrary"
+            [ ( "customApiDomain", FF.maybeString )
+            , ( "welcomeMessage", FF.string "Welcome!" )
+            , ( "eagerLoadInvites", FF.bool )
+            , ( "largeLoginButton", FF.bool )
+            , ( "largeSignupButton", FF.bool )
+            , ( "useExperimentalAnimationLibrary", FF.bool )
             ]
             |> FF.withJsonConverters
             |> FF.withUrlConverters

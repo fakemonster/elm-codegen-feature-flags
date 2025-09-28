@@ -1,5 +1,5 @@
 module CodeGen.FeatureFlags exposing
-    ( bool, maybeString, string
+    ( Flag, bool, maybeString, string
     , fromFlags, withJsonConverters, withUrlConverters, withQueryKeyFormatter, generate
     )
 
@@ -8,7 +8,7 @@ module CodeGen.FeatureFlags exposing
 
 # Flags
 
-@docs bool, maybeString, string
+@docs Flag, bool, maybeString, string
 
 
 # Builder methods
@@ -38,16 +38,20 @@ import Snapshot.Gen.Url.Parser.Query as GUPQ
 
 
 toSetterName : String -> String
-toSetterName string_ =
+toSetterName fieldName =
     "set"
-        ++ (String.uncons string_
+        ++ (String.uncons fieldName
                 |> Maybe.map (Tuple.mapFirst Char.toUpper >> (\( c, s ) -> String.cons c s))
-                |> Maybe.withDefault string_
+                |> Maybe.withDefault fieldName
            )
 
 
+{-| A type setting for a single flag. See the functions below for constructing this type.
+-}
 type Flag
-    = F FlagDetails
+    = Bool
+    | MaybeString
+    | String String
 
 
 type alias FlagDetails =
@@ -66,59 +70,63 @@ type alias FlagDetails =
     }
 
 
-unwrap : Flag -> FlagDetails
-unwrap (F f) =
-    f
-
-
-{-| Create a feature flag for optional strings, with a default value of Nothing. The string
+{-| Create a feature flag for optional strings, with a default value of `Nothing`. The string
 parameter here will be your flag name in the generated code, so always provide camelCase.
 
-    fromFlags [ maybeString "alternateApiUrl" ]
+    fromFlags [ ( "alternateApiUrl", maybeString ) ]
         |> generate "FeatureFlags"
     -- produces a feature flag record definition of
     -- { alternateApiUrl : Maybe String }
 
 -}
-maybeString : String -> Flag
-maybeString name =
+maybeString : Flag
+maybeString =
+    MaybeString
+
+
+maybeString_ : String -> FlagDetails
+maybeString_ name =
     let
         type_ =
             Type.maybe Type.string
     in
-    F
-        { name = name
-        , default = Elm.nothing
-        , decoder = GJD.maybe GJD.string
-        , encode = GenMaybe.map GJE.call_.string
-        , parser = GUPQ.string
-        , toQuery =
-            \flagName val ->
-                GenMaybe.map (GUB.call_.string (Elm.string flagName)) val
-        , type_ = type_
-        , prioritize =
-            \primary secondary ->
-                Case.maybe primary
-                    { nothing = secondary
-                    , just =
-                        ( "_"
-                        , always primary
-                        )
-                    }
-        }
+    { name = name
+    , default = Elm.nothing
+    , decoder = GJD.maybe GJD.string
+    , encode = GenMaybe.map GJE.call_.string
+    , parser = GUPQ.string
+    , toQuery =
+        \flagName val ->
+            GenMaybe.map (GUB.call_.string (Elm.string flagName)) val
+    , type_ = type_
+    , prioritize =
+        \primary secondary ->
+            Case.maybe primary
+                { nothing = secondary
+                , just =
+                    ( "_"
+                    , always primary
+                    )
+                }
+    }
 
 
 {-| Create a feature flag for strings, with your own default value. The first string parameter here
 will be your flag name in the generated code, so always provide camelCase.
 
-    fromFlags [ string "welcomeMessage" "Welcome to my site!" ]
+    fromFlags [ ( "welcomeMessage", string "Welcome to my site!" ) ]
         |> generate "FeatureFlags"
     -- produces a feature flag record definition of
     -- { welcomeMessage : String }
 
 -}
-string : String -> String -> Flag
-string name default_ =
+string : String -> Flag
+string =
+    String
+
+
+string_ : String -> String -> FlagDetails
+string_ name default_ =
     let
         type_ =
             Type.string
@@ -126,39 +134,38 @@ string name default_ =
         default =
             Elm.string default_
     in
-    F
-        { name = name
-        , default = default
-        , decoder = GJD.string
-        , encode =
-            \val ->
-                Elm.ifThen (Op.notEqual val default)
-                    (Elm.just (GJE.call_.string val))
-                    Elm.nothing
-        , parser =
-            \param ->
-                GUPQ.map (GenMaybe.withDefault default) <|
-                    GUPQ.string param
-        , toQuery =
-            \flagName val ->
-                Elm.ifThen (Op.notEqual val default)
-                    (Elm.just (GUB.call_.string (Elm.string flagName) val))
-                    Elm.nothing
-        , type_ = type_
-        , prioritize =
-            \primary secondary ->
-                Elm.ifThen (Op.notEqual primary secondary)
-                    primary
-                    secondary
-        }
+    { name = name
+    , default = default
+    , decoder = GJD.string
+    , encode =
+        \val ->
+            Elm.ifThen (Op.notEqual val default)
+                (Elm.just (GJE.call_.string val))
+                Elm.nothing
+    , parser =
+        \param ->
+            GUPQ.map (GenMaybe.withDefault default) <|
+                GUPQ.string param
+    , toQuery =
+        \flagName val ->
+            Elm.ifThen (Op.notEqual val default)
+                (Elm.just (GUB.call_.string (Elm.string flagName) val))
+                Elm.nothing
+    , type_ = type_
+    , prioritize =
+        \primary secondary ->
+            Elm.ifThen (Op.notEqual primary secondary)
+                primary
+                secondary
+    }
 
 
-{-| Create a feature flag for booleans, with a default value of False. The string parameter here
+{-| Create a feature flag for booleans, with a default value of `False`. The string parameter here
 will be your flag name in the generated code, so always provide camelCase.
 
     fromFlags
-        [ bool "analyticsV2"
-        , bool "showPricingExplainer"
+        [ ( "analyticsV2", bool)
+        , ( "showPricingExplainer", bool)
         ]
         |> generate "FeatureFlags"
 
@@ -168,8 +175,13 @@ will be your flag name in the generated code, so always provide camelCase.
     -- }
 
 -}
-bool : String -> Flag
-bool name =
+bool : Flag
+bool =
+    Bool
+
+
+bool_ : String -> FlagDetails
+bool_ name =
     let
         type_ =
             Type.bool
@@ -178,35 +190,34 @@ bool name =
         whenTrue output condition =
             Elm.ifThen condition (Elm.just output) Elm.nothing
     in
-    F
-        { name = name
-        , default = Elm.bool False
-        , decoder = GJD.bool
-        , encode = whenTrue (GJE.bool True)
-        , parser =
-            \param ->
-                GUPQ.map (GenMaybe.withDefault (Elm.bool False)) <|
-                    GUPQ.enum param
-                        (GenDict.fromList
-                            [ Elm.tuple (Elm.string "true") (Elm.bool True)
-                            ]
-                        )
-        , toQuery =
-            \flagName -> whenTrue (GUB.string flagName "true")
-        , type_ = type_
-        , prioritize = Op.or
-        }
+    { name = name
+    , default = Elm.bool False
+    , decoder = GJD.bool
+    , encode = whenTrue (GJE.bool True)
+    , parser =
+        \param ->
+            GUPQ.map (GenMaybe.withDefault (Elm.bool False)) <|
+                GUPQ.enum param
+                    (GenDict.fromList
+                        [ Elm.tuple (Elm.string "true") (Elm.bool True)
+                        ]
+                    )
+    , toQuery =
+        \flagName -> whenTrue (GUB.string flagName "true")
+    , type_ = type_
+    , prioritize = Op.or
+    }
 
 
 {-| Start a builder for your feature flag module.
 
     fromFlags
-        [ bool "snazzUpTheLoginButton"
-        , maybeString "alternatePricingExplainer"
+        [ ( "snazzUpTheLoginButton", bool )
+        , ( "alternatePricingExplainer", maybeString )
         ]
 
 -}
-fromFlags : List Flag -> Config
+fromFlags : List ( String, Flag ) -> Config
 fromFlags flags =
     Config
         { flags = flags
@@ -221,8 +232,8 @@ NoRedInk/elm-json-decode-pipeline. All fields will be optional in decoding, and 
 be omitted on serialization.
 
     fromFlags
-        [ bool "loadSlowly"
-        , bool "repeatedlyAskForNotificationPermissions"
+        [ ( "loadSlowly", bool )
+        , ( "repeatedlyAskForNotificationPermissions", bool )
         ]
         |> withJsonConverters
         |> generate "Flags"
@@ -256,7 +267,7 @@ withJsonConverters (Config config) =
 Querystring keys match the fieldname by default. All fields will be optional in decoding, and
 default values will be omitted on serialization.
 
-    fromFlags [ maybeString "betterNameForUser" ]
+    fromFlags [ ( "betterNameForUser", maybeString ) ]
         |> withUrlConverters
         |> generate "Flags"
 
@@ -283,7 +294,7 @@ withUrlConverters (Config config) =
 {-| Apply your own logic for creating URL query keys. Takes the fieldname as an input. Ignored if
 you don't call `withUrlConverters`.
 
-    fromFlags [ bool "refreshAtRandom" ]
+    fromFlags [ ( "refreshAtRandom", bool ) ]
         |> withUrlConverters
         |> withQueryKeyFormatter (\fieldName -> "f-" ++ fieldName)
         |> generate "Flags"
@@ -306,7 +317,7 @@ withQueryKeyFormatter f (Config config) =
 
 type Config
     = Config
-        { flags : List Flag
+        { flags : List ( String, Flag )
         , includeJsonConverters : Bool
         , includeUrlConverters : Bool
         , queryKeyFormatter : String -> String
@@ -317,8 +328,8 @@ type Config
 provide here.
 
     fromFlags
-        [ bool "featureA"
-        , maybeString "featureB"
+        [ ( "featureA", bool )
+        , ( "featureB", maybeString )
         ]
         |> withJsonConverters
         |> withUrlConverters
@@ -330,7 +341,19 @@ generate : String -> Config -> Elm.File
 generate fileName (Config config) =
     let
         flags =
-            List.map unwrap config.flags
+            List.map
+                (\( name, variant ) ->
+                    case variant of
+                        Bool ->
+                            bool_ name
+
+                        MaybeString ->
+                            maybeString_ name
+
+                        String default ->
+                            string_ name default
+                )
+                config.flags
 
         featureFlagsType =
             Type.named [] "FeatureFlags"
@@ -363,8 +386,8 @@ generate fileName (Config config) =
                 , Elm.group group
                 ]
 
-        default : Elm.Expression
-        default =
+        defaultFlags : Elm.Expression
+        defaultFlags =
             Elm.withType featureFlagsType <|
                 Elm.record
                     (List.map (\flag -> ( flag.name, flag.default )) flags)
@@ -383,10 +406,10 @@ An instance of FeatureFlags with all default values.
 
     default : FeatureFlags
     default =
-        """ ++ String.replace "\n" "\n        " (ToString.expression default).body
+        """ ++ String.replace "\n" "\n        " (ToString.expression defaultFlags).body
                 }
               <|
-                default
+                defaultFlags
             ]
         , namedGroup "# Serialization & deserialization"
             [ if config.includeJsonConverters then
