@@ -23,6 +23,7 @@ import Elm.Arg as Arg
 import Elm.Case as Case
 import Elm.Let as Let
 import Elm.Op as Op
+import Elm.ToString as ToString
 import Snapshot.Gen.Basics as GenBasics
 import Snapshot.Gen.Dict as GenDict
 import Snapshot.Gen.Json.Decode as GJD
@@ -309,139 +310,149 @@ generate fileName (Config config) =
             Elm.expose
                 << Elm.withDocumentation doc
                 << Elm.declaration name
+
+        namedGroup : String -> List Elm.Declaration -> Elm.Declaration
+        namedGroup title group =
+            Elm.group
+                [ Elm.docs title
+                , Elm.group group
+                ]
+
+        default : Elm.Expression
+        default =
+            Elm.withType featureFlagsType <|
+                Elm.record
+                    (List.map (\flag -> ( flag.name, flag.default )) flags)
     in
     Elm.file [ fileName ] <|
-        [ Elm.group
-            [ -- Elm.docs """
-              -- # Feature Flags!
-              -- @docs FeatureFlags, default
-              -- # De/Serialization
-              -- @docs decoder, encode, fromUrl, toParams
-              -- # Iterating over flags/meta-usage
-              -- @docs WhenApplied, applyToActive, applyToAll
-              -- """
-              --   ,
-              Elm.expose <|
+        [ namedGroup "# Your flags"
+            [ Elm.expose <|
                 Elm.withDocumentation "Your generated FeatureFlags type. Has a field for each flag in your codegen config." <|
                     Elm.alias "FeatureFlags" <|
                         Type.record
                             (List.map (\flag -> ( flag.name, flag.type_ )) flags)
             , exposedDeclaration
                 { name = "default"
-                , doc = "An instance of FeatureFlags with all default values."
+                , doc = """
+An instance of FeatureFlags with all default values.
+
+    default : FeatureFlags
+    default =
+        """ ++ String.replace "\n" "\n        " (ToString.expression default).body
                 }
               <|
-                Elm.withType featureFlagsType <|
-                    Elm.record
-                        (List.map (\flag -> ( flag.name, flag.default )) flags)
+                default
             ]
-        , if config.includeJsonConverters then
-            Elm.group
-                [ exposedDeclaration
-                    { name = "decoder"
-                    , doc = "A JSON decoder where all fields are optional. Will succeed no matter what!"
-                    }
-                  <|
-                    Elm.withType (Type.namedWith [ "Json", "Decode" ] "Decoder" [ featureFlagsType ]) <|
-                        List.foldl
-                            (\flag decoder ->
-                                decoder
-                                    |> Op.pipe
-                                        (Elm.apply GPipeline.values_.optional
-                                            [ Elm.string flag.name
-                                            , flag.decoder
-                                            , flag.default
-                                            ]
-                                        )
-                            )
-                            (GJD.succeed (Elm.val "FeatureFlags"))
-                            flags
-                , exposedDeclaration
-                    { name = "encode"
-                    , doc = "Encodes FeatureFlags to JSON."
-                    }
-                  <|
-                    Elm.withType (Type.function [ featureFlagsType ] (Type.named [ "Json", "Encode" ] "Value")) <|
-                        Elm.fn
-                            (Arg.var "featureFlags")
-                            (\featureFlags ->
-                                GJE.call_.object
-                                    (GenList.filterMap GenBasics.identity
-                                        (List.map
-                                            (\flag ->
-                                                GenMaybe.map
-                                                    (GenTuple.pair (Elm.string flag.name))
-                                                    (flag.encode (featureFlags |> Elm.get flag.name))
+        , namedGroup "# Serialization & deserialization"
+            [ if config.includeJsonConverters then
+                Elm.group
+                    [ exposedDeclaration
+                        { name = "decoder"
+                        , doc = "A JSON decoder where all fields are optional. Will succeed no matter what!"
+                        }
+                      <|
+                        Elm.withType (Type.namedWith [ "Json", "Decode" ] "Decoder" [ featureFlagsType ]) <|
+                            List.foldl
+                                (\flag decoder ->
+                                    decoder
+                                        |> Op.pipe
+                                            (Elm.apply GPipeline.values_.optional
+                                                [ Elm.string flag.name
+                                                , flag.decoder
+                                                , flag.default
+                                                ]
                                             )
-                                            flags
-                                        )
-                                    )
-                            )
-                ]
-
-          else
-            Elm.group []
-        , if config.includeUrlConverters then
-            Elm.group
-                [ exposedDeclaration
-                    { name = "fromUrl"
-                    , doc = "Decodes from a URL querystring. Ignores the path. (Maybe we should expose a Url.Query.Parser so you can be more precise if you like?)"
-                    }
-                  <|
-                    Elm.withType (Type.function [ Type.named [ "Url" ] "Url" ] featureFlagsType) <|
-                        Elm.fn
-                            (Arg.varWith "url" (Type.named [ "Url" ] "Url"))
-                            (\url ->
-                                Let.letIn
-                                    (\droppedPath ->
-                                        Elm.apply (Elm.val "FeatureFlags")
+                                )
+                                (GJD.succeed (Elm.val "FeatureFlags"))
+                                flags
+                    , exposedDeclaration
+                        { name = "encode"
+                        , doc = "Encodes FeatureFlags to JSON."
+                        }
+                      <|
+                        Elm.withType (Type.function [ featureFlagsType ] (Type.named [ "Json", "Encode" ] "Value")) <|
+                            Elm.fn
+                                (Arg.var "featureFlags")
+                                (\featureFlags ->
+                                    GJE.call_.object
+                                        (GenList.filterMap GenBasics.identity
                                             (List.map
                                                 (\flag ->
-                                                    GenMaybe.withDefault flag.default
-                                                        (GUP.parse
-                                                            (GUP.query
-                                                                (flag.parser (config.queryKeyFormatter flag.name))
-                                                            )
-                                                            droppedPath
-                                                        )
+                                                    GenMaybe.map
+                                                        (GenTuple.pair (Elm.string flag.name))
+                                                        (flag.encode (featureFlags |> Elm.get flag.name))
                                                 )
                                                 flags
                                             )
-                                    )
-                                    |> Let.value "droppedPath"
-                                        (url |> Elm.updateRecord [ ( "path", Elm.string "" ) ])
-                                    |> Let.toExpression
-                            )
-                , exposedDeclaration
-                    { name = "toParams"
-                    , doc = "Querystring builder."
-                    }
-                  <|
-                    Elm.withType
-                        (Type.function [ featureFlagsType ]
-                            (Type.list (Type.named [ "Url", "Builder" ] "QueryParameter"))
-                        )
-                    <|
-                        Elm.fn
-                            (Arg.var "featureFlags")
-                            (\featureFlags ->
-                                GenList.filterMap GenBasics.identity
-                                    (List.map
-                                        (\flag ->
-                                            flag.toQuery
-                                                (config.queryKeyFormatter flag.name)
-                                                (featureFlags |> Elm.get flag.name)
                                         )
-                                        flags
-                                    )
-                            )
-                ]
+                                )
+                    ]
 
-          else
-            Elm.group []
-        , exposedDeclaration
-            { name = "or"
-            , doc = """
+              else
+                Elm.group []
+            , if config.includeUrlConverters then
+                Elm.group
+                    [ exposedDeclaration
+                        { name = "fromUrl"
+                        , doc = "Decodes from a URL querystring. Ignores the path. (Maybe we should expose a Url.Query.Parser so you can be more precise if you like?)"
+                        }
+                      <|
+                        Elm.withType (Type.function [ Type.named [ "Url" ] "Url" ] featureFlagsType) <|
+                            Elm.fn
+                                (Arg.varWith "url" (Type.named [ "Url" ] "Url"))
+                                (\url ->
+                                    Let.letIn
+                                        (\droppedPath ->
+                                            Elm.apply (Elm.val "FeatureFlags")
+                                                (List.map
+                                                    (\flag ->
+                                                        GenMaybe.withDefault flag.default
+                                                            (GUP.parse
+                                                                (GUP.query
+                                                                    (flag.parser (config.queryKeyFormatter flag.name))
+                                                                )
+                                                                droppedPath
+                                                            )
+                                                    )
+                                                    flags
+                                                )
+                                        )
+                                        |> Let.value "droppedPath"
+                                            (url |> Elm.updateRecord [ ( "path", Elm.string "" ) ])
+                                        |> Let.toExpression
+                                )
+                    , exposedDeclaration
+                        { name = "toParams"
+                        , doc = "Querystring builder."
+                        }
+                      <|
+                        Elm.withType
+                            (Type.function [ featureFlagsType ]
+                                (Type.list (Type.named [ "Url", "Builder" ] "QueryParameter"))
+                            )
+                        <|
+                            Elm.fn
+                                (Arg.var "featureFlags")
+                                (\featureFlags ->
+                                    GenList.filterMap GenBasics.identity
+                                        (List.map
+                                            (\flag ->
+                                                flag.toQuery
+                                                    (config.queryKeyFormatter flag.name)
+                                                    (featureFlags |> Elm.get flag.name)
+                                            )
+                                            flags
+                                        )
+                                )
+                    ]
+
+              else
+                Elm.group []
+            ]
+        , namedGroup "# Utilities"
+            [ exposedDeclaration
+                { name = "or"
+                , doc = """
 Join two FeatureFlags together, taking each first value if non-default, else the second. Most useful
 when reconciling feature flags parsed from two sources (e.g. URL querystrings and JSON).
 
@@ -449,24 +460,49 @@ when reconciling feature flags parsed from two sources (e.g. URL querystrings an
     or { a = Just "a", b = False } { a = Just "aa", b = True }
         == { a = Just "a", b = True }
 """
-            }
-          <|
-            Elm.withType (Type.function [ featureFlagsType, featureFlagsType ] featureFlagsType) <|
-                Elm.fn2
-                    (Arg.var "primary")
-                    (Arg.var "secondary")
-                    (\primary secondary ->
-                        Elm.record
-                            (List.map
-                                (\flag ->
-                                    ( flag.name
-                                    , flag.prioritize (primary |> Elm.get flag.name) (secondary |> Elm.get flag.name)
+                }
+              <|
+                Elm.withType (Type.function [ featureFlagsType, featureFlagsType ] featureFlagsType) <|
+                    Elm.fn2
+                        (Arg.var "primary")
+                        (Arg.var "secondary")
+                        (\primary secondary ->
+                            Elm.record
+                                (List.map
+                                    (\flag ->
+                                        ( flag.name
+                                        , flag.prioritize (primary |> Elm.get flag.name) (secondary |> Elm.get flag.name)
+                                        )
                                     )
+                                    flags
                                 )
-                                flags
-                            )
+                        )
+            , Elm.group <|
+                List.map
+                    (\flag ->
+                        exposedDeclaration
+                            { name = toSetterName flag.name
+                            , doc = "Simple setter function for the `" ++ flag.name ++ "` flag."
+                            }
+                        <|
+                            Elm.withType (Type.function [ flag.type_, featureFlagsType ] featureFlagsType) <|
+                                Elm.fn2
+                                    -- agonizing over the argument order here
+                                    (Arg.var flag.name)
+                                    (Arg.var "featureFlags")
+                                    (\flagVal featureFlags ->
+                                        Elm.updateRecord [ ( flag.name, flagVal ) ] featureFlags
+                                    )
                     )
-        , Elm.group
+                    flags
+            ]
+        , namedGroup """
+# Cross-flag operations
+
+Let's say you need to do something with all your feature flags. Maybe list the active ones for a bug report, or show the whole collection in a view function so power users can activate your experimental features. When adding a new flag, it's really easy to forget to include it in these kinds of functionality, because *your flags are in a record*! The compiler can't ensure you reference all fields, like it could with `case` expressions.
+
+The `WhenApplied` type and corresponding functions here help you help the compiler keep you honest. Check out the `examples` directory in the docs to see this in practice.
+        """
             [ Elm.expose <|
                 Elm.withDocumentation """
 A meta-type of FeatureFlag, where each field (same name) has a type of "a function going from
@@ -535,22 +571,4 @@ Invoke a callback for each flag, regardless of status. (Ignore the type variable
                             flags
                         )
             ]
-        , Elm.group <|
-            List.map
-                (\flag ->
-                    exposedDeclaration
-                        { name = toSetterName flag.name
-                        , doc = "Simple setter function for the `" ++ flag.name ++ "` flag."
-                        }
-                    <|
-                        Elm.withType (Type.function [ flag.type_, featureFlagsType ] featureFlagsType) <|
-                            Elm.fn2
-                                -- agonizing over the argument order here
-                                (Arg.var flag.name)
-                                (Arg.var "featureFlags")
-                                (\flagVal featureFlags ->
-                                    Elm.updateRecord [ ( flag.name, flagVal ) ] featureFlags
-                                )
-                )
-                flags
         ]
