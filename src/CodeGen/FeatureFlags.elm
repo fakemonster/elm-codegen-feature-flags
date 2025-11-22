@@ -1,6 +1,6 @@
 module CodeGen.FeatureFlags exposing
     ( Flag, bool, maybeString, string
-    , fromFlags, withJsonConverters, withUrlConverters, withQueryKeyFormatter, generate
+    , Config, fromFlags, withJsonConverters, withUrlConverters, withQueryKeyFormatter, generate
     )
 
 {-|
@@ -13,7 +13,7 @@ module CodeGen.FeatureFlags exposing
 
 # Builder methods
 
-@docs fromFlags, withJsonConverters, withUrlConverters, withQueryKeyFormatter, generate
+@docs Config, fromFlags, withJsonConverters, withUrlConverters, withQueryKeyFormatter, generate
 
 -}
 
@@ -315,6 +315,8 @@ withQueryKeyFormatter f (Config config) =
     Config { config | queryKeyFormatter = f }
 
 
+{-| A ready-to-generate configuration. Pass it along between builders.
+-}
 type Config
     = Config
         { flags : List ( String, Flag )
