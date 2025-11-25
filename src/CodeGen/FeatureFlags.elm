@@ -32,6 +32,7 @@ import Snapshot.Gen.Json.Encode as GJE
 import Snapshot.Gen.List as GenList
 import Snapshot.Gen.Maybe as GenMaybe
 import Snapshot.Gen.Tuple as GenTuple
+import Snapshot.Gen.Url as GU
 import Snapshot.Gen.Url.Builder as GUB
 import Snapshot.Gen.Url.Parser as GUP
 import Snapshot.Gen.Url.Parser.Query as GUPQ
@@ -410,7 +411,6 @@ An instance of FeatureFlags with all default values.
     default =
         """ ++ String.replace "\n" "\n        " (ToString.expression defaultFlags).body
                 }
-              <|
                 defaultFlags
             ]
         , namedGroup "# Serialization & deserialization"
@@ -421,7 +421,7 @@ An instance of FeatureFlags with all default values.
                         , doc = "A JSON decoder where all fields are optional. Will succeed no matter what!"
                         }
                       <|
-                        Elm.withType (Type.namedWith [ "Json", "Decode" ] "Decoder" [ featureFlagsType ]) <|
+                        Elm.withType (GJD.annotation_.decoder featureFlagsType) <|
                             List.foldl
                                 (\flag decoder ->
                                     decoder
@@ -440,7 +440,7 @@ An instance of FeatureFlags with all default values.
                         , doc = "Encodes FeatureFlags to JSON."
                         }
                       <|
-                        Elm.withType (Type.function [ featureFlagsType ] (Type.named [ "Json", "Encode" ] "Value")) <|
+                        Elm.withType (Type.function [ featureFlagsType ] GJE.annotation_.value) <|
                             Elm.fn
                                 (Arg.var "featureFlags")
                                 (\featureFlags ->
@@ -467,9 +467,9 @@ An instance of FeatureFlags with all default values.
                         , doc = "Decodes from a URL querystring. Ignores the path. (Maybe we should expose a Url.Query.Parser so you can be more precise if you like?)"
                         }
                       <|
-                        Elm.withType (Type.function [ Type.named [ "Url" ] "Url" ] featureFlagsType) <|
+                        Elm.withType (Type.function [ GU.annotation_.url ] featureFlagsType) <|
                             Elm.fn
-                                (Arg.varWith "url" (Type.named [ "Url" ] "Url"))
+                                (Arg.varWith "url" GU.annotation_.url)
                                 (\url ->
                                     Let.letIn
                                         (\droppedPath ->
@@ -498,7 +498,7 @@ An instance of FeatureFlags with all default values.
                       <|
                         Elm.withType
                             (Type.function [ featureFlagsType ]
-                                (Type.list (Type.named [ "Url", "Builder" ] "QueryParameter"))
+                                (Type.list GUB.annotation_.queryParameter)
                             )
                         <|
                             Elm.fn
@@ -598,25 +598,24 @@ Invoke a callback for each flag that has a non-default value.
         == [ "Feat A" ]
 """
                 }
-              <|
-                \applied featureFlags ->
-                    GenList.filterMap GenBasics.identity
-                        (List.map
-                            (\flag ->
-                                Elm.ifThen
-                                    (Op.notEqual (featureFlags |> Elm.get flag.name)
-                                        (Elm.val "default" |> Elm.get flag.name)
-                                    )
-                                    (Elm.just
-                                        (Elm.apply
-                                            (applied |> Elm.get flag.name)
-                                            [ featureFlags |> Elm.get flag.name ]
-                                        )
-                                    )
-                                    Elm.nothing
-                            )
-                            flags
-                        )
+              <| \applied featureFlags ->
+              GenList.filterMap GenBasics.identity
+                  (List.map
+                      (\flag ->
+                          Elm.ifThen
+                              (Op.notEqual (featureFlags |> Elm.get flag.name)
+                                  (Elm.val "default" |> Elm.get flag.name)
+                              )
+                              (Elm.just
+                                  (Elm.apply
+                                      (applied |> Elm.get flag.name)
+                                      [ featureFlags |> Elm.get flag.name ]
+                                  )
+                              )
+                              Elm.nothing
+                      )
+                      flags
+                  )
             , -- TODO: what the hell is with the type annotation here
               whenAppliedFunc { name = "applyToAll", doc = """
 Invoke a callback for each flag, regardless of status. (Ignore the type variable name there, it's a generation artifact.)
@@ -629,16 +628,15 @@ Invoke a callback for each flag, regardless of status. (Ignore the type variable
         }
         { a = Just "content", b = Nothing, c = False }
         == [ "A: content", "B: <unset>", "C: inactive" ]
-""" } <|
-                \applied featureFlags ->
-                    Elm.list
-                        (List.map
-                            (\flag ->
-                                Elm.apply
-                                    (applied |> Elm.get flag.name)
-                                    [ featureFlags |> Elm.get flag.name ]
-                            )
-                            flags
-                        )
+""" } <| \applied featureFlags ->
+ Elm.list
+     (List.map
+         (\flag ->
+             Elm.apply
+                 (applied |> Elm.get flag.name)
+                 [ featureFlags |> Elm.get flag.name ]
+         )
+         flags
+     )
             ]
         ]
